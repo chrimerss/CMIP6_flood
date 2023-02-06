@@ -1,0 +1,8 @@
+*.nc
+ssp119/*
+ssp126/*
+ssp245/*
+ssp370/*
+ssp460/*
+ssp585/*
+hist/*
