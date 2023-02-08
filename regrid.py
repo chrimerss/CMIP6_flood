@@ -36,18 +36,23 @@ def regrid_to_1deg(array):
     out= regridder(array) 
     return out
 
+base_dir= 'ssp460'
+folders= os.listdir(base_dir)
 scenario='ssp460'
-folders= os.listdir('ssp460')
 for name in folders:
-	print('processing %s'%name)
-	source_id= name.split('-g')[0]
-	grid_label=re.search(r'g\w\d?', name).group(0)
-	mem= re.search(r'r\di1p1f1', name).group(0)
-	files= glob(os.path.join(scenario, name,'*.nc'))
-	ds= xr.open_mfdataset(files, parallel=True)
-	ds= swap_western_hemisphere(ds)
-	ds= regrid_to_1deg(ds)
-	ds= (ds*86400).assign_attrs(units='mm/day')
-	years, datasets= zip(*ds.groupby("time.year"))
-	paths= ['%s/%s/%s_%s_%s_1x1deg_%d.nc'%(scenario,name,source_id.replace('-','_'), scenario, grid_label, year) for year in years]
-	xr.save_mfdataset(datasets, paths, encoding = {"mrro": {'zlib': True, 'dtype':'float32', '_FillValue':-9999}})
+#     if name in ['CanESM5-gn-r3i1p1f1-ssp460', 'CanESM5-gn-r4i1p1f1-ssp460',
+#                     'CM6A-LR-gr-r1i1p1f1-ssp460', 'IPSL-CM6A-LR-gr-r1i1p1f2-ssp460']:
+    if name.startswith('CanESM5'):
+        print('processing %s'%name)
+        source_id= name.split('-g')[0]
+        grid_label=re.search(r'g\w\d?', name).group(0)
+        mem= re.search(r'r\d\d?i\dp\df\d', name).group(0)
+        files= glob(os.path.join(base_dir, name,'*.nc'))
+        ds= xr.open_mfdataset(files, parallel=False).compute()['mrro'].to_dataset()
+        ds= ds.convert_calendar('standard', align_on="year", missing=0, use_cftime=True)
+        ds= swap_western_hemisphere(ds)
+        ds= regrid_to_1deg(ds)
+        ds= (ds*86400).assign_attrs(units='mm/day')
+        years, datasets= zip(*ds.groupby("time.year"))
+        paths= ['%s/%s/%s_%s_%s_1x1deg_%d.nc'%(base_dir,name,source_id.replace('-','_'), scenario, grid_label, year) for year in years]
+        xr.save_mfdataset(datasets, paths, encoding = {"mrro": {'zlib': True, 'dtype':'float32', '_FillValue':-9999}})
